@@ -143,7 +143,7 @@ class WebAuth(object):
     def __init__(self, username='', password='',
                  userAgent='Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                            ' AppleWebKit/537.36 (KHTML, like Gecko)'
-                           ' Chrome/118.0.0.0 Safari/537.36'):
+                           ' Chrome/118.0.0.0 Safari/537.36',proxies = None):
 
         # ALL FUNCTIONS RENAMED TO PEP8 NOTATION.
         self.session = requests.session()
@@ -159,20 +159,21 @@ class WebAuth(object):
         self.session_id = None
         self.email_auth_waits = False  # Not used yet.
         self.logged_on = False
+        self.proxies=proxies
 
     @staticmethod
     def send_api_request(data, steam_api_interface, steam_api_method,
-                         steam_api_version):
+                         steam_api_version,proxies):
         """Send request to Steam API via requests"""
         steam_url = API_URL.format(steam_api_interface, steam_api_method,
                                    steam_api_version)
 
         if steam_api_method == "GetPasswordRSAPublicKey":  # It's GET method
             res = requests.get(steam_url, timeout=10, headers=API_HEADERS,
-                               params=data)
+                               params=data,proxies=proxies)
         else:  # Every other API endpoints are POST.
             res = requests.post(steam_url, timeout=10, headers=API_HEADERS,
-                                data=data)
+                                data=data,proxies=proxies)
 
         res.raise_for_status()
         return res.json()
@@ -180,7 +181,7 @@ class WebAuth(object):
     def _get_rsa_key(self):
         """Get rsa key to crypt password."""
         return self.send_api_request({'account_name': self.username},
-                              "IAuthentication", 'GetPasswordRSAPublicKey', 1)
+                              "IAuthentication", 'GetPasswordRSAPublicKey', 1,self.proxies)
 
     def _encrypt_password(self):
         """Encrypt password via RSA key
@@ -216,7 +217,8 @@ class WebAuth(object):
              },
             'IAuthentication',
             'BeginAuthSessionViaCredentials',
-            1
+            1,
+            self.proxies
         )
         self.client_id = resp['response']['client_id']
         self.request_id = resp['response']['request_id']
@@ -241,7 +243,7 @@ class WebAuth(object):
         resp = self.send_api_request({
             'client_id': str(self.client_id),
             'request_id': str(self.request_id)
-        }, 'IAuthentication', 'PollAuthSessionStatus', 1)
+        }, 'IAuthentication', 'PollAuthSessionStatus', 1,self.proxies)
         try:
             self.refresh_token = resp['response']['refresh_token']
             self.access_token = resp['response']['access_token']
@@ -277,7 +279,7 @@ class WebAuth(object):
             'code_type': code_type
         }
         res = self.send_api_request(data, 'IAuthentication',
-                             'UpdateAuthSessionWithSteamGuardCode', 1)
+                             'UpdateAuthSessionWithSteamGuardCode', 1,self.proxies)
         return res
 
 
